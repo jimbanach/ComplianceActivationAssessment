@@ -546,7 +546,7 @@ $FriendlyLicenses = @{
 "MIP_S_EXCHANGE_CO"="Microsoft Information Protection"
 }    
 #check to see if the Microsoft Graph Modules are installed
-if (get-installedmodule -Name Microsoft.Graph) {
+if (get-installedmodule -Name Microsoft.Graph -ErrorAction SilentlyContinue) {
     Write-Host "Microsoft Graph Installed, Continuing with Script Execution"
 }
 else {
@@ -565,7 +565,7 @@ else {
 }
 }
 #check to see if the MSOLlicense management module is installed and install it if it is not
-if (get-installedmodule -Name MSOLLicenseManagement) {
+if (get-installedmodule -Name MSOLLicenseManagement -ErrorAction SilentlyContinue) {
     Write-Host "License Management Module Installed, Continuing with Script Execution"
 }
 else {
