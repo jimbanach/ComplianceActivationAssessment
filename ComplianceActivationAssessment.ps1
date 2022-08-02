@@ -583,6 +583,7 @@ else {
 }
 }
 #connect to the MS Graph Using an account specified in real time
+Write-Host 'Connecting to the Microsoft Graph, Please logon in the new window' -ForegroundColor DarkYellow
 connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Directory.Read.All'
 
 #run the license report
