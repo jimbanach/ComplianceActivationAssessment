@@ -6,12 +6,11 @@
 ####
 
 
-
 #project variables
 param ($reporttype='Simple',$reportpath=$env:LOCALAPPDATA)
+$global:logfile = Join-path ($env:LOCALAPPDATA)("Local")
 $Plans = @()
 $FriendlyLicenses= @{}
-$global:logfile = $env:LOCALAPPDATA
 $temppath = Join-path ($env:LOCALAPPDATA) ("License_Report_" + [string](Get-Date -UFormat %Y%m%d) + ".csv")
 $outputfile=(Join-path ($reportpath) ("ActivationReport_" + [string](Get-Date -UFormat %Y%m%d%S) + ".html"))
 
@@ -23,31 +22,30 @@ $serviceusage = New-Object System.Data.Datatable
 ##CSS for HTML Output##
 $header = @"
 <style>
-
     h1 {
         font-family: Arial, Helvetica, sans-serif;
         color: #e68a00;
         font-size: 28px;
     }
-   
+
     h2 {
         font-family: Arial, Helvetica, sans-serif;
         color: #000099;
         font-size: 16px;
     }
-   
-   table {
+
+    table {
 		font-size: 12px;
 		border: 0px; 
 		font-family: Arial, Helvetica, sans-serif;
 	} 
-	
+
     td {
 		padding: 4px;
 		margin: 0px;
 		border: 0;
 	}
-	
+
     th {
         background: #395870;
         background: linear-gradient(#49708f, #293f50);
@@ -63,15 +61,10 @@ $header = @"
     }
         
     #CreationDate {
-
         font-family: Arial, Helvetica, sans-serif;
         color: #ff3300;
         font-size: 12px;
-
     }
-
-
-
 </style>
 "@
 
@@ -565,6 +558,7 @@ else {
         Exit
 }
 }
+
 #check to see if the MSOLlicense management module is installed and install it if it is not
 if (get-installedmodule -Name MSOLLicenseManagement -ErrorAction SilentlyContinue) {
     Write-Host "License Management Module Installed, Continuing with Script Execution"
@@ -589,12 +583,9 @@ connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Directory.Read.
 
 #run the license report
 if(test-path $temppath -ErrorAction SilentlyContinue){
-Write-Host "Running With Overwrite"
-
     Get-MGUserLicenseReport -OverWrite
 }
 else{
-Write-host "Running Plain"
 Get-MGUserLicenseReport
 }
 $list = import-csv $temppath
@@ -604,16 +595,13 @@ $AllSku = Get-MgSubscribedSku 2>%1
 if ($AllSku.count -le 0) {
     Write-Error ("No SKU found! Do you have permissions to run Get-MGSubscribedSKU? `nSuggested Command: Connect-MGGraph -scopes Organization.Read.All, Directory.Read.All, Organization.ReadWrite.All, Directory.ReadWrite.All")
 } 
-# Make sure our plan array is null
-[array]$Plans = $null
+
 # Build a list of all of the plans from all of the SKUs
+[array]$Plans = $null
 foreach ($Sku in $AllSku) {
     $SKU.ServicePlans.ServicePlanName | ForEach-Object { [array]$Plans = $Plans + $_ }
 }
-
-# Need just the unique plans
 $Plans = $Plans | Select-Object -Unique | Sort-Object
-
 
 #use the license file and the active plans for the customer subscription
 foreach ($plan in $plans){
@@ -624,7 +612,8 @@ $holdlist = $list | Where-Object -property $planlist -eq 'Success'
 $holdlist = $holdlist | Select-Object userprincipalname,$planlist -unique
 [void]$serviceusage.Rows.Add($Planlist,$Holdlist.count)
 }
-#filterout the services that do not have anyone assigned to them
+
+#filterout the services that have a null assignment value
 $serviceusage2 = $serviceusage | Where-Object -property ActivatedUsers -ge 0 -ErrorAction SilentlyContinue
 
 #construct our final output
@@ -639,14 +628,14 @@ elseif ($reporttype -match 'Detailed') {
     Write-host "Generating Detailed HTML Report"
 }
 
-#generate the HTML OUTPUT
+#generate the HTML Output
 $htmldetails = "<h1> Compliance Service Assesment Report </h1>
-<p>The following document shows the current status of the license and service usage within the Customers office 365 envrioment</p>
+<p>The following document shows the current status of the license and service usage within the Customers Microsoft 365 envrioment</p>
 <p id='CreationDate'>Creation Date: $(Get-Date)</p>"
 
 $files = $outputlist | ConvertTo-Html -Fragment -PreContent "<h2>Individual Service Summary</h2>"
 $tenantlicensedetails = $AllSku | Select-Object SkuPartNumber, ConsumedUnits, @{ n = 'TotalUnits'; e = { $_.prepaidunits.enabled } } | convertto-html -Fragment -PreContent "<h2>Microsoft 365 License Summary</h2>"
-Convertto-html -Head $header -Body " $htmldetails $tenantlicensedetails $files" -Title "Compliance Service Assesment Report" | Out-File $outputfile 
+Convertto-html -Head $header -Body " $htmldetails $tenantlicensedetails $files" -Title "Microsoft 365 Service Assesment Report" | Out-File $outputfile 
 
 #display report in browser
 Write-Host "Report file available at: " $outputfile
