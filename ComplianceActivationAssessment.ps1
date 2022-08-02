@@ -8,9 +8,10 @@
 
 
 #project variables
-param ($output='Simple',$reportpath=$env:LOCALAPPDATA)
+param ($reporttype='Simple',$reportpath=$env:LOCALAPPDATA)
 $Plans = @()
 $FriendlyLicenses= @{}
+$logfile = $env:LOCALAPPDATA
 $temppath = Join-path ($env:LOCALAPPDATA) ("License_Report_" + [string](Get-Date -UFormat %Y%m%d) + ".csv")
 $outputfile=(Join-path ($reportpath) ("ActivationReport_" + [string](Get-Date -UFormat %Y%m%d%S) + ".html"))
 
@@ -588,9 +589,11 @@ connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Directory.Read.
 
 #run the license report
 if(test-path $temppath -ErrorAction SilentlyContinue){
-Get-MGUserLicenseReport -OverWrite
+Write-Host "Running With Overwrite"
+    Get-MGUserLicenseReport -OverWrite
 }
 else{
+Write-host "Running Plain"
 Get-MGUserLicenseReport
 }
 $list = import-csv $temppath
@@ -624,13 +627,13 @@ $holdlist = $holdlist | Select-Object userprincipalname,$planlist -unique
 $serviceusage2 = $serviceusage | Where-Object -property ActivatedUsers -ge 0 -ErrorAction SilentlyContinue
 
 #construct our final output
-if ($output -match 'Simple'){
+if ($reporttype -match 'Simple'){
     $serviceusage2 = $serviceusage2 | Where-Object {($_.Servicename -like "RMS_S_*" -or $_.ServiceName -like "COMPLIANCE_MANAGER*" -or $_.ServiceName -like "LOCKBOX_*" -or $_.ServiceName -like "MIP_S_*" -or $_.Servicename -like "INFORMATION_Barriers" -or $_.ServiceName -like "CONTENT*" -or $_.ServiceName -like "M365_ADVACNED*" -or $_.ServiceName -like "MICROSOFT_COMMUNICATION*" -or $_.ServiceName -like "COMMUNICATIONS_*" -or $_.ServiceName -like "CUSTOMER_KE*" -or $_.ServiceName -like "INFO_GOV*" -or $_.ServiceName -like "INSIDER_RISK_MANAG*" -or $_.ServiceName -like "ML_CLASSIFI*" -or $_.ServiceName -like "RECORDS_*" -or $_.ServiceName -like "EQUIVIO*" -or $_.ServiceName -like "PAM*" -or $_.ServiceName -like "PRIVACY*")} 
     $outputlist = $serviceusage2 | Select-Object Servicename, @{ n = 'FriendlyName'; e= {$_ | ForEach-Object { $FriendlyLicenses[$_.ServiceName] } } },ActivatedUsers  | Sort-Object FriendlyName
     Write-host "Generating Simple HTML Report"
 }
 
-elseif ($output -match 'Detailed') {
+elseif ($reporttype -match 'Detailed') {
     $outputlist = $serviceusage2 | Select-Object Servicename, @{ n = 'FriendlyName'; e= {$_ | ForEach-Object { $FriendlyLicenses[$_.ServiceName] } } },ActivatedUsers  | Sort-Object FriendlyName
     Write-host "Generating Detailed HTML Report"
 }
