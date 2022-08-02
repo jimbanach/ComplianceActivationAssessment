@@ -1,17 +1,18 @@
-#https://github.com/djust270/Microsoft-Graph-PowerShell-SDK-Scripts/blob/main/Get-MGUserLicenseReport.ps1
-#https://github.com/Canthv0/MSOLLicenseManagement
+####
+# Compliance Workshop License Assessment Script
+# Leverages the Microsoft Graph License Management report from the following module
+# #https://github.com/Canthv0/MSOLLicenseManagement
+# 
+####
 
-#steps to do###
-#check to see that the Microsoft Graph is installed
-#run the license report script
-#use the output of that script as the input for the next steps
+
 
 #project variables
-param ($output='Simple',$path=$env:LOCALAPPDATA)
+param ($output='Simple',$reportpath=$env:LOCALAPPDATA)
 $Plans = @()
 $FriendlyLicenses= @{}
 $temppath = Join-path ($env:LOCALAPPDATA) ("License_Report_" + [string](Get-Date -UFormat %Y%m%d) + ".csv")
-$outputfile=(Join-path ($path) ("ActivationReport_" + [string](Get-Date -UFormat %Y%m%d%S) + ".html"))
+$outputfile=(Join-path ($reportpath) ("ActivationReport_" + [string](Get-Date -UFormat %Y%m%d%S) + ".html"))
 
 #table to capture our outputs
 $serviceusage = New-Object System.Data.Datatable
@@ -556,6 +557,7 @@ else {
     $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
     if ($decision -eq 0) {
         Write-Host 'Your choice is Yes, installing module'
+        Write-Host "This will take several minutes with no visible progress, please be patient" -foregroundcolor Yellow -backgroundcolor Magenta
         Install-Module Microsoft.Graph -Scope CurrentUser -SkipPublisherCheck -Force -Confirm:$false 
     } else {
         Write-Host 'Please install the module manually to continue https://docs.microsoft.com/en-us/powershell/microsoftgraph/overview?view=graph-powershell-beta'
@@ -584,7 +586,12 @@ else {
 connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Directory.Read.All'
 
 #run the license report
+if(test-path $temppath -ErrorAction SilentlyContinue){
 Get-MGUserLicenseReport -OverWrite
+}
+else{
+Get-MGUserLicenseReport
+}
 $list = import-csv $temppath
 
 #Get all of the availible SKUs in tenant
