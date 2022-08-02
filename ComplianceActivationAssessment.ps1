@@ -6,18 +6,18 @@
 #run the license report script
 #use the output of that script as the input for the next steps
 
-
-
 #project variables
-param ($list,$output='Simple',$outputfile)
+param ($output='Simple',$path=$env:LOCALAPPDATA)
 $Plans = @()
 $FriendlyLicenses= @{}
-#setup table to capture our outputs
+$temppath = Join-path ($env:LOCALAPPDATA) ("License_Report_" + [string](Get-Date -UFormat %Y%m%d) + ".csv")
+$outputfile=(Join-path ($path) ("ActivationReport_" + [string](Get-Date -UFormat %Y%m%d%S) + ".html"))
+
+#table to capture our outputs
 $serviceusage = New-Object System.Data.Datatable
 [void]$serviceusage.Columns.Add("ServiceName")
 [void]$serviceusage.Columns.Add("ActivatedUsers")
-$list = import-csv C:\temp\License_Report_20220722_5.csv
-$outputfile = 'C:\temp\outfile.html'
+
 ##CSS for HTML Output##
 $header = @"
 <style>
@@ -72,15 +72,6 @@ $header = @"
 
 </style>
 "@
-if ($list -eq $null) {
-    $list = read-host -Prompt "Please provide the path and file name of your license output" 
-}
-#if the list is not specified in the commandline open up a dialog to select it
-#$FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{ 
-#    InitialDirectory = [Environment]::GetFolderPath('Desktop') 
-#    Filter = 'Documents (*.docx)|*.docx|SpreadSheet (*.xlsx)|*.xlsx'
-#}
-#$null = $FileBrowser.ShowDialog()
 
 #list of all of the current friendly sku product names - https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/licensing-service-plan-reference 
 $FriendlyLicenses = @{
@@ -554,11 +545,31 @@ $FriendlyLicenses = @{
 "MIP_S_EXCHANGE_CO"="Microsoft Information Protection"
 }    
 
+#check to see if the MSOLlicense management module is installed and install it if it is not
+if (get-installedmodule -Name MSOLLicenseManagement) {
+    Write-Host "License Management Module Installed, Continuing with Script Execution"
+}
+else {
+    $title    = 'License Management Module is Not Installed'
+    $question = 'Do you want to install it now?'
+    $choices  = '&Yes', '&No'
+
+    $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+    if ($decision -eq 0) {
+        Write-Host 'Your choice is Yes, installing module'
+        Install-Module MSOLLicenseManagement -scope CurrentUser -SkipPublisherCheck -Force -Confirm:$false 
+    } else {
+        Write-Host 'Please install the module manually to continue https://github.com/Canthv0/MSOLLicenseManagement.'
+}
+}
 #connect to the MS Graph Using an account specified in real time
 connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Directory.Read.All'
 
+#run the license report
+Get-MGUserLicenseReport -OverWrite
+$list = import-csv $temppath
+
 #Get all of the availible SKUs in tenant
-###############
 $AllSku = Get-MgSubscribedSku 2>%1
 if ($AllSku.count -le 0) {
     Write-Error ("No SKU found! Do you have permissions to run Get-MGSubscribedSKU? `nSuggested Command: Connect-MGGraph -scopes Organization.Read.All, Directory.Read.All, Organization.ReadWrite.All, Directory.ReadWrite.All")
@@ -569,9 +580,10 @@ if ($AllSku.count -le 0) {
 foreach ($Sku in $AllSku) {
     $SKU.ServicePlans.ServicePlanName | ForEach-Object { [array]$Plans = $Plans + $_ }
 }
+
 # Need just the unique plans
 $Plans = $Plans | Select-Object -Unique | Sort-Object
-###############
+
 
 #use the license file and the active plans for the customer subscription
 foreach ($plan in $plans){
@@ -582,31 +594,22 @@ $holdlist = $list | Where-Object -property $planlist -eq 'Success'
 $holdlist = $holdlist | Select-Object userprincipalname,$planlist -unique
 [void]$serviceusage.Rows.Add($Planlist,$Holdlist.count)
 }
-
 #filterout the services that do not have anyone assigned to them
 $serviceusage2 = $serviceusage | Where-Object -property ActivatedUsers -ge 0 -ErrorAction SilentlyContinue
 
-#output test
-#$serviceusage2 | Select-Object Servicename, @{ n = 'FriendlyName'; e= {$_ | ForEach-Object { $FriendlyLicenses[$_.ServiceName] } } },ActivatedUsers  | Sort-Object FriendlyName
-
-#create HTML OUTPUT SHOWING
-# serviceusage2 filtered to compliance products (gov, EDU, COmmercial)
-
-if ($output = 'Simple')
-{$serviceusage2 = $serviceusage2 | Where-Object {($_.Servicename -like "RMS_S_*" -or $_.ServiceName -like "COMPLIANCE_MANAGER*" -or $_.ServiceName -like "LOCKBOX_*" -or $_.ServiceName -like "MIP_S_*" -or $_.Servicename -like "INFORMATION_Barriers" -or $_.ServiceName -like "CONTENT*" -or $_.ServiceName -like "M365_ADVACNED*" -or $_.ServiceName -like "MICROSOFT_COMMUNICATION*" -or $_.ServiceName -like "COMMUNICATIONS_*" -or $_.ServiceName -like "CUSTOMER_KE*" -or $_.ServiceName -like "INFO_GOV*" -or $_.ServiceName -like "INSIDER_RISK_MANAG*" -or $_.ServiceName -like "ML_CLASSIFI*" -or $_.ServiceName -like "RECORDS_*" -or $_.ServiceName -like "EQUIVIO*" -or $_.ServiceName -like "PAM*" -or $_.ServiceName -like "PRIVACY*")} 
-$outputlist = $serviceusage2 | Select-Object Servicename, @{ n = 'FriendlyName'; e= {$_ | ForEach-Object { $FriendlyLicenses[$_.ServiceName] } } },ActivatedUsers  | Sort-Object FriendlyName
-$outputlist 
-}
-
-if ($output = 'Detailed') {
+#construct our final output
+if ($output -match 'Simple'){
+    $serviceusage2 = $serviceusage2 | Where-Object {($_.Servicename -like "RMS_S_*" -or $_.ServiceName -like "COMPLIANCE_MANAGER*" -or $_.ServiceName -like "LOCKBOX_*" -or $_.ServiceName -like "MIP_S_*" -or $_.Servicename -like "INFORMATION_Barriers" -or $_.ServiceName -like "CONTENT*" -or $_.ServiceName -like "M365_ADVACNED*" -or $_.ServiceName -like "MICROSOFT_COMMUNICATION*" -or $_.ServiceName -like "COMMUNICATIONS_*" -or $_.ServiceName -like "CUSTOMER_KE*" -or $_.ServiceName -like "INFO_GOV*" -or $_.ServiceName -like "INSIDER_RISK_MANAG*" -or $_.ServiceName -like "ML_CLASSIFI*" -or $_.ServiceName -like "RECORDS_*" -or $_.ServiceName -like "EQUIVIO*" -or $_.ServiceName -like "PAM*" -or $_.ServiceName -like "PRIVACY*")} 
     $outputlist = $serviceusage2 | Select-Object Servicename, @{ n = 'FriendlyName'; e= {$_ | ForEach-Object { $FriendlyLicenses[$_.ServiceName] } } },ActivatedUsers  | Sort-Object FriendlyName
-    $outputlist 
+    Write-host "Generating Simple HTML Report"
 }
 
-# lisitng of all licenses avialble on the various service plans. 
+elseif ($output -match 'Detailed') {
+    $outputlist = $serviceusage2 | Select-Object Servicename, @{ n = 'FriendlyName'; e= {$_ | ForEach-Object { $FriendlyLicenses[$_.ServiceName] } } },ActivatedUsers  | Sort-Object FriendlyName
+    Write-host "Generating Detailed HTML Report"
+}
 
 #generate the HTML OUTPUT
-
 $htmldetails = "<h1> Compliance Service Assesment Report </h1>
 <p>The following document shows the current status of the license and service usage within the Customers office 365 envrioment</p>
 <p id='CreationDate'>Creation Date: $(Get-Date)</p>"
@@ -614,6 +617,10 @@ $htmldetails = "<h1> Compliance Service Assesment Report </h1>
 $files = $outputlist | ConvertTo-Html -Fragment -PreContent "<h2>Individual Service Summary</h2>"
 $tenantlicensedetails = $AllSku | Select-Object SkuPartNumber, ConsumedUnits, @{ n = 'TotalUnits'; e = { $_.prepaidunits.enabled } } | convertto-html -Fragment -PreContent "<h2>Microsoft 365 License Summary</h2>"
 Convertto-html -Head $header -Body " $htmldetails $tenantlicensedetails $files" -Title "Compliance Service Assesment Report" | Out-File $outputfile 
-#if detailed is run pull the above +
-# a listing of all of the below products. 
-# skuproduct details (e.g. showing what products are in which skus)
+
+#display report in browser
+Write-Host "Report file available at: " $outputfile
+Start-Process $outputfile
+
+#cleanup
+Disconnect-MgGraph
