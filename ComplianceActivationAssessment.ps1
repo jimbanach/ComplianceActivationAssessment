@@ -11,7 +11,7 @@
 param ($reporttype='Simple',$reportpath=$env:LOCALAPPDATA)
 $Plans = @()
 $FriendlyLicenses= @{}
-$logfile = $env:LOCALAPPDATA
+$global:logfile = $env:LOCALAPPDATA
 $temppath = Join-path ($env:LOCALAPPDATA) ("License_Report_" + [string](Get-Date -UFormat %Y%m%d) + ".csv")
 $outputfile=(Join-path ($reportpath) ("ActivationReport_" + [string](Get-Date -UFormat %Y%m%d%S) + ".html"))
 
@@ -590,6 +590,7 @@ connect-MgGraph -Scopes 'User.Read.All','Organization.Read.All','Directory.Read.
 #run the license report
 if(test-path $temppath -ErrorAction SilentlyContinue){
 Write-Host "Running With Overwrite"
+
     Get-MGUserLicenseReport -OverWrite
 }
 else{
