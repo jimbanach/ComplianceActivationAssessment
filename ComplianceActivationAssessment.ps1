@@ -544,7 +544,24 @@ $FriendlyLicenses = @{
 "PRIVACY_MANGEMENT_DSR"="Priva Privacy DSR"
 "MIP_S_EXCHANGE_CO"="Microsoft Information Protection"
 }    
+#check to see if the Microsoft Graph Modules are installed
+if (get-installedmodule -Name Microsoft.Graph) {
+    Write-Host "Microsoft Graph Installed, Continuing with Script Execution"
+}
+else {
+    $title    = 'Microsoft Graph is Not Installed'
+    $question = 'Do you want to install it now?'
+    $choices  = '&Yes', '&No'
 
+    $decision = $Host.UI.PromptForChoice($title, $question, $choices, 1)
+    if ($decision -eq 0) {
+        Write-Host 'Your choice is Yes, installing module'
+        Install-Module Microsoft.Graph -Scope CurrentUser -SkipPublisherCheck -Force -Confirm:$false 
+    } else {
+        Write-Host 'Please install the module manually to continue https://docs.microsoft.com/en-us/powershell/microsoftgraph/overview?view=graph-powershell-beta'
+        Exit
+}
+}
 #check to see if the MSOLlicense management module is installed and install it if it is not
 if (get-installedmodule -Name MSOLLicenseManagement) {
     Write-Host "License Management Module Installed, Continuing with Script Execution"
@@ -559,7 +576,8 @@ else {
         Write-Host 'Your choice is Yes, installing module'
         Install-Module MSOLLicenseManagement -scope CurrentUser -SkipPublisherCheck -Force -Confirm:$false 
     } else {
-        Write-Host 'Please install the module manually to continue https://github.com/Canthv0/MSOLLicenseManagement.'
+        Write-Host 'Please install the module manually to continue https://github.com/Canthv0/MSOLLicenseManagement'
+        Exit
 }
 }
 #connect to the MS Graph Using an account specified in real time
