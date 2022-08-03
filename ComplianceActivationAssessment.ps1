@@ -629,8 +629,8 @@ elseif ($reporttype -match 'Detailed') {
 }
 
 #generate the HTML Output
-$htmldetails = "<h1> Compliance Service Assesment Report </h1>
-<p>The following document shows the current status of the license and service usage within the Customers Microsoft 365 envrioment</p>
+$htmldetails = "<h1> Compliance Activation Assesment Report </h1>
+<p>The following document shows the current status of the license and service usage within the customers Microsoft 365 envrioment</p>
 <p id='CreationDate'>Creation Date: $(Get-Date)</p>"
 
 $files = $outputlist | ConvertTo-Html -Fragment -PreContent "<h2>Individual Service Summary</h2>"
