@@ -1,1 +1,11 @@
 %1
+OLD/RuleDetails.ps1
+OLD/Test-DLPReport.ps1
+OLD/WorkshopStatusReport-individual.ps1
+OLD/WorkshopStatusReport.ps1
+.vscode/launch.json
+notes.txt
+Individual Function Test/test-get-dlpolicysummary.ps1
+Individual Function Test/test-get-dlppolicydetails.ps1
+Individual Function Test/test-get-dlppolicyruledetails.ps1
+Individual Function Test/test-new-POESummaryFile.ps1

@@ -24,19 +24,19 @@ $header = @"
 <style>
     h1 {
         font-family: Arial, Helvetica, sans-serif;
-        color: #e68a00;
-        font-size: 28px;
+        color: #0078D4;
+        font-size: 32px;
     }
 
     h2 {
         font-family: Arial, Helvetica, sans-serif;
-        color: #000099;
-        font-size: 16px;
+        color: #737373;
+        font-size: 20px;
     }
 
     table {
 		font-size: 12px;
-		border: 0px; 
+		border: 1px; 
 		font-family: Arial, Helvetica, sans-serif;
 	} 
 
@@ -47,8 +47,8 @@ $header = @"
 	}
 
     th {
-        background: #395870;
-        background: linear-gradient(#49708f, #293f50);
+        background: #0078D4;
+        #background: linear-gradient(#49708f, #293f50);
         color: #fff;
         font-size: 11px;
         text-transform: uppercase;
