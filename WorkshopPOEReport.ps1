@@ -1,11 +1,8 @@
-# 1 -   capture all of the DLP Policies in a Tabel so they Can Be Reported On
-# 1.2 - Report that to HTML as two tables,  one for the workshop, one for everything else
-# 2 -   Pull all of the Policy Specifics
-# 2.1   Details of Each Policy (including Groups) - as a list
-# 2.2   Rules in Each Policy
-#            - High Level as a List
-#            - Then Classifiers as a Table
-
+############################
+#Compliance workshop DLP Policy Report
+#Author: Jim Banach
+#Version 1.0 - October,2022
+##################################
 
 #project variables
 param ($reporttype='All',$reportpath=$env:LOCALAPPDATA)
@@ -19,13 +16,13 @@ $header = @"
 <style>
     h1 {
         font-family: Arial, Helvetica, sans-serif;
-        color: #0078D4;
+        color: #107C10;
         font-size: 32px;
     }
 
     h2 {
         font-family: Arial, Helvetica, sans-serif;
-        color: #0078D4;
+        color: #107C10;
         font-size: 26px;
     }
 
@@ -54,8 +51,7 @@ $header = @"
 	}
 
     th {
-        background: #0078D4;
-        #background: linear-gradient(#49708f, #293f50);
+        background: #107C10;
         color: #fff;
         font-size: 11px;
         text-transform: uppercase;
@@ -195,7 +191,7 @@ function get-dlppolicydetails($param){
 Write-Host "Processing the policy:" $policy.Name -ForegroundColor Green
 #we now need to check to see which locations the policy is enabled for, we will do this by checking for the presence of data in the *location* variables
 
-#Exchange Activity Block
+    #Exchange Activity Block
     if ($policy.ExchangeLocation.Count -gt 0){
         Write-host $policy.name "Policy is enabled for Exchange" -ForegroundColor Yellow
         if($policy.ExchangeSenderMemberOf.count -eq 0){
@@ -396,17 +392,6 @@ Write-Host "Processing the policy:" $policy.Name -ForegroundColor Green
         #write-host "On-Prem DLP is enabled for" $onpremlocations    
     }
 
-    #$dlppolicydetailobject=[PSCustomObject]@{
-    #    Exchange = ($exchangemembers -join ":::") | Out-String
-    #    OneDriveUsers = ($onedrivemembers -join ":::")| Out-String
-    #    OneDriveGroups = ($onedrivesites -join ":::") | Out-String
-    #    SharePoint = ($sharepointlocations -join ":::") | Out-String
-    #    Teams = ($teamslocations -join ":::") | Out-String
-    #    Endpoints = ($endpointdlplocations -join ":::") | Out-String
-    #    DefenderforCA = ($defenderforCAlocations -join ":::") | Out-String
-    #    OnPremDLP = ($onpremlocations -join ":::") | Out-String
-    #}
-
     $dlphashtable=[Ordered]@{
         PolicyName = $param
         Exchange = ($exchangemembers -join ":::") | Out-String
@@ -424,21 +409,9 @@ Write-Host "Processing the policy:" $policy.Name -ForegroundColor Green
         OnPremDLP = ($onpremlocations -join ":::") | Out-String
         ProtectedOnPremLocations = $onpremlocationscount
     }
-    #$dlphashtable=[Ordered]@{
-    #    Exchange = $exchangemembers
-    #    OneDriveUsers = $onedrivemembers
-    #    OneDriveGroups = $onedrivesites
-    #    SharePoint = $sharepointlocations
-    #    Teams = $teamslocations
-    #    Endpoints = $endpointdlplocations
-    #    DefenderforCA = $defenderforCAlocations
-    #    OnPremDLP = $onpremlocations
-    #}
 
-    $dlppolicydetailobject = [PSCustomObject]$dlphashtable
-        
-    $dlppolicydetailtable += $dlppolicydetailobject
-    
+    $dlppolicydetailobject = [PSCustomObject]$dlphashtable    
+    $dlppolicydetailtable += $dlppolicydetailobject    
     return $dlppolicydetailtable
 }
 function get-dlppolicyruledetails($param){
@@ -553,9 +526,27 @@ Write-Host 'Connecting to Security & Compliance Center. Please logon in the new 
 Connect-IPPSSession
 Write-Host "Connecting to Azure AD. Please Logon in the new Window" -ForegroundColor DarkYellow
 Connect-AzureAD
+Write-Host "`r`n`r`n'nConnected to Microsoft 365, Continuing with Script`r`n`r`n" -ForegroundColor Yellow
+
+#######################
+#script activities
+#each section below performs one part of the script
+#section 1: collects all of the DLP Policies and identifies which workloads are enabled
+#section 2: works through each individual policy and gathers pertninant data about each DLP Policy including
+#           the locations (both users and groups) that are being evaulated.  It also goes through the Rules 
+#           attached to each policy and lists out any SITs that are being evaluated.  There are a number of
+#           other policy and rule settings that COULD be pulled, in this script we are focused on the settings
+#           that we are configuring as part of the workshops
+#section 3: we are creating a unified summary table for the top fo the report. This uses the chart created in 
+#           section 1 and then combines that with a count of all of unique SITS in each policy along with a 
+#           count of all of the covered users in a given workload combining individually defined users and
+#           users in a group
+#section 4: this is where we are constructing the report itself.  It involves merging data from the prior two
+#           sections and then using convertto-html to place it all into a report that can be provided to the
+#           customer and submitted as part of the final Proof of Execution (POE) for the workshop
+#######################
 
 ### section 1 DLP Policies
-#$dlppolicysummary = get-dlpolicysummary | convertto-html
 $dlppolicysummary = get-dlpolicysummary
 
 ### section 2, collect information on individual policies
@@ -623,11 +614,11 @@ foreach($dlppolicy in $dlppolicies){
     $a += $htmloutput
     $a += "<br>"
     $a += "<hr>"
-    
 }
 
-###section 3 construct a unified summary table
-### doing this here as i couldn't get the function to return properly
+### section ,3 construct a unified summary table
+###### doing this here as i couldn't get the function to return properly
+###### future improvement - create a function that takes these 3 items and returns the formatted data
 $dlpsummarychart = $dlppolicysummary
 $dlppolicycounts = $policycounts
 $sitpolicycounts = $sitcounts
@@ -635,29 +626,29 @@ $POEChart = [array]@()
 
 foreach ($item in $dlpsummarychart){
 
-$coveredaccounts = $dlppolicycounts | Where-Object {$_.Policyname -eq $item.policyname}
-$coveredsits = $sitpolicycounts | Where-Object {$_.DLPPolicyName -eq $item.policyname}
+    $coveredaccounts = $dlppolicycounts | Where-Object {$_.Policyname -eq $item.policyname}
+    $coveredsits = $sitpolicycounts | Where-Object {$_.DLPPolicyName -eq $item.policyname}
 
-#create the new output hashtable
-$itemtable=[ordered]@{
-    DLPPolicyName = $item.PolicyName
-    CreationDate = $item.CreationDate
-    PolicyMode = $item.PolicyMode
-    SITSUsed = $coveredsits.CountofSits
-    ExchangeOnline = $item.ExchangeOnline + " (" + $coveredaccounts.ProtectedExchangeUsers + ")"
-    OneDrive = $item.OneDrive + " (" + $coveredaccounts.ProtectedOneDriveLocations + ")"
-    SharePoint = $item.SharePointOnline + " (" + $coveredaccounts.ProtectedSharePointLocations + ")"
-    Teams = $item.Teams + " (" + $coveredaccounts.ProtectedTeamsUsers + ")"
-    Endpoints = $item.EndPoints + " (" + $coveredaccounts.ProtectedEndPointUsers + ")"
-    DefenderforCA = $item.DefenderforCA 
-    OnPremises = $item.OnPremises + " (" + $coveredaccounts.ProtectedOnPremLocations + ")"
+    #create the new output hashtable
+    $itemtable=[ordered]@{
+        DLPPolicyName = $item.PolicyName
+        CreationDate = $item.CreationDate
+        PolicyMode = $item.PolicyMode
+        SITSUsed = $coveredsits.CountofSits
+        ExchangeOnline = $item.ExchangeOnline + " (" + $coveredaccounts.ProtectedExchangeUsers + ")"
+        OneDrive = $item.OneDrive + " (" + $coveredaccounts.ProtectedOneDriveLocations + ")"
+        SharePoint = $item.SharePointOnline + " (" + $coveredaccounts.ProtectedSharePointLocations + ")"
+        Teams = $item.Teams + " (" + $coveredaccounts.ProtectedTeamsUsers + ")"
+        Endpoints = $item.EndPoints + " (" + $coveredaccounts.ProtectedEndPointUsers + ")"
+        DefenderforCA = $item.DefenderforCA 
+        OnPremises = $item.OnPremises + " (" + $coveredaccounts.ProtectedOnPremLocations + ")"
+    }
+
+    $summarychart = [PSCustomObject]$itemtable
+    $POEChart += $summarychart
 }
 
-$summarychart = [PSCustomObject]$itemtable
-$POEChart += $summarychart
-}
-
-#final section build our html file
+###section 4, build our html file
 $reportintro = "<h1> Compliance Workshop: DLP Policy Configuration Report</h1>
 <p>The following document shows a snapshot of the current status of DLP Policy Confiugraiton Within the Microsoft 365 envrioment. </p>
 <p>Units in () indicate the number of protected users or sites </p>
@@ -668,22 +659,25 @@ $reportintro = "<h1> Compliance Workshop: DLP Policy Configuration Report</h1>
 $reportdetails = "<h2>Individual Policy Details<h2>
 </hr2>"
 
-if($reporttype='All'){
-    $poehtml = ($poechart | ConvertTo-Html -Fragment) -replace ("(\([0]\))","") 
+if($reporttype -match 'All'){
+    $poehtml = ($poechart | ConvertTo-Html -Fragment) -replace ("(\([0]\))","") -replace ("(s\d+\))","s)")
+    #saving each of the individual reports here in case they are ever needed for troubleshooting the report rollup
     #$summaryhtml = $dlppolicysummary | ConvertTo-Html -Fragment
     #$policyhtml = $policycounts | convertto-html -Fragment
     #$sithtml = $sitcounts | ConvertTo-Html -Fragment
     Convertto-html -Head $header -Body "$reportintro $poehtml $reportdetails $a" -Title "Compliance Workshop DLP Policy Configuration Report" | Out-File $outputfile 
 }
-elseif($reporttype='POEOnly'){
-    $poehtml = ($poechart | ConvertTo-Html -PreContent "<h1>Compliance Workshop DLP POE Summary</h1>") -replace ("(\([0]\)|[0]\))|","") 
+elseif($reporttype -match'POEOnly'){
+    $poehtml = ($poechart | ConvertTo-Html -PreContent "<h1>Compliance Workshop DLP POE Summary</h1>") -replace ("(\([0]\))","") -replace ("(s\d+\))","s)")
     Convertto-html -Head $header -Body "$reportintro $poehtml " -Title "Compliance Workshop DLP Policy Report" | Out-File $outputfile 
 }
 
 #display report in browser
-Write-Host "Report file available at: " $outputfile -ForegroundColor Yellow -BackgroundColor Green
+Write-Host "`nReport file available at:" $outputfile -ForegroundColor Yellow -BackgroundColor Blue
+Write-host "`n`r"
 Start-Process $outputfile
 
 #cleanup
-Disconnect-ExchangeOnline -Confirm:$false -ErrorAction:SilentlyContinue  
-Disconnect-AzureAD -Confirm:$false
+Write-Host "Disconnecting Services" -ForegroundColor Yellow
+Disconnect-ExchangeOnline -Confirm:$false -ErrorAction:SilentlyContinue  -InformationAction Ignore
+Disconnect-AzureAD -Confirm:$false -InformationAction Ignore
